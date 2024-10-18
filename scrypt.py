@@ -1,7 +1,12 @@
 import os
+import logging
 import openai
 import requests
 from musicbrainzngs import set_useragent, search_recordings
+
+# Set up logging for better debugging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Set up OpenAI API key from environment variable
 openai.api_key = os.getenv('OPENAI_API_KEY')
@@ -10,19 +15,29 @@ openai.api_key = os.getenv('OPENAI_API_KEY')
 musicbrainz_email = os.getenv('MUSICBRAINZ_EMAIL', 'default@example.com')
 set_useragent("LocalPlaylistGenerator", "1.0", musicbrainz_email)
 
-# Directory where the local music files are stored
-MUSIC_LIBRARY_PATH = "/path/to/local/music"
+# Directory where local music files are stored (via volume mount)
+MUSIC_LIBRARY_PATH = "/music"
 
-# Function to interact with OpenAI API to process user input
+# Directory to save the M3U playlist (via volume mount)
+OUTPUT_PATH = "/output"
+
+
+# Function to interpret prompt using OpenAI
 def interpret_prompt(prompt):
-    response = openai.Completion.create(
-        engine="text-davinci-003",  # Choose the model
-        prompt=f"Interpret the following music request: {prompt}",
-        max_tokens=100
-    )
-    return response['choices'][0]['text'].strip()
+    try:
+        logger.info("Interpreting user prompt with OpenAI")
+        response = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=f"Interpret the following music request: {prompt}",
+            max_tokens=100
+        )
+        return response['choices'][0]['text'].strip()
+    except Exception as e:
+        logger.error(f"Error interpreting prompt: {e}")
+        return None
 
-# Function to search for music in local library based on metadata
+
+# Function to search for local music based on interpreted details
 def search_local_music(query):
     matching_files = []
     for root, dirs, files in os.walk(MUSIC_LIBRARY_PATH):
@@ -31,48 +46,63 @@ def search_local_music(query):
                 matching_files.append(os.path.join(root, file))
     return matching_files
 
-# Function to query MusicBrainz for metadata
+
+# Function to query MusicBrainz API with error handling
 def get_musicbrainz_data(track_name, artist_name=None):
     try:
         if artist_name:
             results = search_recordings(artist=artist_name, recording=track_name, limit=1)
         else:
             results = search_recordings(recording=track_name, limit=1)
-        return results['recording-list'][0] if results['recording-list'] else None
+        if results['recording-list']:
+            return results['recording-list'][0]
+        else:
+            logger.warning(f"No MusicBrainz data found for {track_name}")
+            return None
     except Exception as e:
-        print(f"Error querying MusicBrainz: {e}")
+        logger.error(f"Error querying MusicBrainz for {track_name}: {e}")
         return None
+
 
 # Function to create an M3U playlist
 def create_m3u_playlist(tracks, playlist_name="playlist.m3u"):
-    with open(playlist_name, 'w') as playlist:
-        playlist.write("#EXTM3U\n")
-        for track in tracks:
-            playlist.write(f"{track}\n")
-    print(f"M3U playlist saved as {playlist_name}")
+    playlist_path = os.path.join(OUTPUT_PATH, playlist_name)
+    try:
+        with open(playlist_path, 'w') as playlist:
+            playlist.write("#EXTM3U\n")
+            for track in tracks:
+                playlist.write(f"{track}\n")
+        logger.info(f"M3U playlist saved as {playlist_path}")
+    except Exception as e:
+        logger.error(f"Error creating M3U playlist: {e}")
+
 
 # Main function to create a playlist from a natural language prompt
 def create_playlist_from_prompt(prompt):
-    # Step 1: Interpret the user prompt
+    # Interpret the user prompt
     interpreted_prompt = interpret_prompt(prompt)
-    print(f"Interpreted Prompt: {interpreted_prompt}")
+    if not interpreted_prompt:
+        logger.error("Failed to interpret the prompt.")
+        return
 
-    # Step 2: Search local music based on interpreted details
-    # For simplicity, let's assume interpreted prompt includes a keyword like genre or artist
+    logger.info(f"Interpreted Prompt: {interpreted_prompt}")
+
+    # Search local music files
     matching_tracks = search_local_music(interpreted_prompt)
-    print(f"Found {len(matching_tracks)} matching tracks in the local library.")
+    logger.info(f"Found {len(matching_tracks)} matching tracks in the local library.")
 
-    # Step 3: Optionally get more metadata from MusicBrainz (could be slow)
+    # Get additional metadata from MusicBrainz
     final_tracks = []
     for track in matching_tracks:
         track_name = os.path.basename(track)
         musicbrainz_data = get_musicbrainz_data(track_name)
         if musicbrainz_data:
-            print(f"Found metadata for {track_name}")
+            logger.info(f"Found metadata for {track_name}")
         final_tracks.append(track)
 
-    # Step 4: Create an M3U playlist
+    # Create the M3U playlist
     create_m3u_playlist(final_tracks, playlist_name="my_playlist.m3u")
+
 
 # Example usage
 if __name__ == "__main__":

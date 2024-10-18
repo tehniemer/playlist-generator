@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  playlist-generator:
+    image: ghcr.io/tehniemer/playlist-generator:latest
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MUSICBRAINZ_EMAIL=${MUSICBRAINZ_EMAIL}
+    volumes:
+      - ./local_music:/music
+      - ./output:/output
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    tty: true
