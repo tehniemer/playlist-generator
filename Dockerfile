@@ -11,10 +11,11 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies directly in the Dockerfile
+# Install Python dependencies in a separate layer to cache them
+# This step will only re-run if the dependencies change
 RUN pip install --no-cache-dir openai musicbrainzngs
 
-# Copy the rest of the application files into the container
+# Copy only the application code (excluding files that don't affect pip install)
 COPY . .
 
 # Set environment variables for OpenAI API key
