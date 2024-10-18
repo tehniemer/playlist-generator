@@ -4,9 +4,6 @@ FROM python:3.10-slim
 # Set the working directory in the container
 WORKDIR /usr/src/app
 
-# Copy the requirements.txt file into the container
-COPY requirements.txt .  # Make sure we copy requirements.txt first
-
 # Install system dependencies required to build Python packages
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -14,10 +11,10 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies directly in the Dockerfile
+RUN pip install --no-cache-dir openai musicbrainzngs
 
-# Copy the rest of the application files
+# Copy the rest of the application files into the container
 COPY . .
 
 # Set environment variables for OpenAI API key
