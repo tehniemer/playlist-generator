@@ -35,6 +35,3 @@ VOLUME ["/music", "/output"]
 
 # Make port 8080 available to the world outside this container (if using a web interface)
 EXPOSE 8080
-
-# Set the entry point
-CMD ["sh", "-c", "python script.py --email $MUSICBRAINZ_EMAIL"]
