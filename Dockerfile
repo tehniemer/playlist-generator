@@ -7,13 +7,20 @@ WORKDIR /usr/src/app
 # Copy the current directory contents into the container at /usr/src/app
 COPY . .
 
-# Install any needed packages specified in requirements.txt
+# Install system dependencies required to build Python packages
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    gcc \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install any needed Python packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Set environment variables for OpenAI API key
 ENV OPENAI_API_KEY="your_openai_api_key"
 
-# Define the user's email as an environment variable for MusicBrainz
+# Set environment variable for MusicBrainz email
 ENV MUSICBRAINZ_EMAIL="your_email@example.com"
 
 # Make port 8080 available to the world outside this container (if using a web interface)
