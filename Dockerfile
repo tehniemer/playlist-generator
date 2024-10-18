@@ -37,4 +37,4 @@ VOLUME ["/music", "/output"]
 EXPOSE 8080
 
 # Set the entry point
-CMD ["sh", "-c", "python ./script.py --email $MUSICBRAINZ_EMAIL"]
+CMD ["sh", "-c", "python script.py --email $MUSICBRAINZ_EMAIL"]
