@@ -4,8 +4,8 @@ FROM python:3.10-slim
 # Set the working directory in the container
 WORKDIR /usr/src/app
 
-# Copy the current directory contents into the container at /usr/src/app
-COPY . .
+# Copy the requirements.txt file into the container
+COPY requirements.txt .  # Make sure we copy requirements.txt first
 
 # Install system dependencies required to build Python packages
 RUN apt-get update && apt-get install -y \
@@ -14,8 +14,11 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install any needed Python packages specified in requirements.txt
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application files
+COPY . .
 
 # Set environment variables for OpenAI API key
 ENV OPENAI_API_KEY="your_openai_api_key"
